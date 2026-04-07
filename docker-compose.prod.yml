@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:14-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${NAKAMA_POSTGRES_DB}
+      POSTGRES_PASSWORD: ${NAKAMA_POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${NAKAMA_POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  nakama:
+    image: registry.heroiclabs.com/heroiclabs/nakama:3.21.1
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint:
+      - "/bin/sh"
+      - "-ecx"
+      - >
+        /nakama/nakama migrate up --database.address postgres:${NAKAMA_POSTGRES_PASSWORD}@${NAKAMA_POSTGRES_HOST}:${NAKAMA_POSTGRES_PORT}/${NAKAMA_POSTGRES_DB} &&
+        exec /nakama/nakama
+        --name ${NAKAMA_NAME}
+        --database.address postgres:${NAKAMA_POSTGRES_PASSWORD}@${NAKAMA_POSTGRES_HOST}:${NAKAMA_POSTGRES_PORT}/${NAKAMA_POSTGRES_DB}
+        --logger.level ${NAKAMA_LOG_LEVEL}
+        --session.token_expiry_sec ${NAKAMA_SESSION_TOKEN_EXPIRY_SEC}
+        --socket.server_key ${NAKAMA_SOCKET_SERVER_KEY}
+        --session.encryption_key ${NAKAMA_SESSION_ENCRYPTION_KEY}
+        --session.refresh_encryption_key ${NAKAMA_REFRESH_ENCRYPTION_KEY}
+        --runtime.http_key ${NAKAMA_RUNTIME_HTTP_KEY}
+        --console.username ${NAKAMA_CONSOLE_USERNAME}
+        --console.password ${NAKAMA_CONSOLE_PASSWORD}
+        --console.signing_key ${NAKAMA_CONSOLE_SIGNING_KEY}
+        --runtime.path /nakama/data/modules
+    ports:
+      - "7349:7349"
+      - "7350:7350"
+      - "7351:7351"
+    volumes:
+      - ./nakama/data:/nakama/data
+      - ./nakama/modules:/nakama/data/modules
+
+volumes:
+  postgres_data:

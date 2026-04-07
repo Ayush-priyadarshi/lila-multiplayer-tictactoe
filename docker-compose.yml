@@ -1,0 +1,45 @@
+services:
+  postgres:
+    platform: linux/amd64
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_DB: nakama
+      POSTGRES_PASSWORD: localdb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nakama"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  nakama:
+    platform: linux/amd64
+    image: registry.heroiclabs.com/heroiclabs/nakama:3.21.1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint:
+      - "/bin/sh"
+      - "-ecx"
+      - >
+        /nakama/nakama migrate up --database.address postgres:localdb@postgres:5432/nakama &&
+        exec /nakama/nakama
+        --name nakama1
+        --database.address postgres:localdb@postgres:5432/nakama
+        --logger.level DEBUG
+        --session.token_expiry_sec 300
+        --runtime.path /nakama/data/modules
+    ports:
+      - "7349:7349"
+      - "7350:7350"
+      - "7351:7351"
+    volumes:
+      - ./nakama/data:/nakama/data
+      - ./nakama/modules:/nakama/data/modules
+
+volumes:
+  postgres_data:
+
+
+
