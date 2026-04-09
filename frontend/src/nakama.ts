@@ -132,15 +132,11 @@ export async function fetchGlobalLeaderboard(client: Client, session: Session) {
 }
 
 export async function createAuthoritativeMatch(client: Client, session: Session, mode: Mode, roomName: string) {
-  const result = await client.rpc(
-    session,
-    "create_match",
-    JSON.stringify({
-      mode,
-      room_name: roomName.trim() || "Grid Clash Arena",
-      owner_name: getStoredName().trim() || "Host"
-    })
-  );
+  const result = await client.rpc(session, "create_match", {
+    mode,
+    room_name: roomName.trim() || "Grid Clash Arena",
+    owner_name: getStoredName().trim() || "Host"
+  } as unknown as object);
 
   return parseJsonLike<{ matchId: string; roomCode?: string }>(result.payload);
 }
